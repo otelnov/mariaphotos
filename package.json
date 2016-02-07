@@ -1,0 +1,19 @@
+{
+  "name": "mariaphotos",
+  "version": "0.0.1",
+  "description": "twitter photo-bot Maria",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otelnov/mariaphotos.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/otelnov/mariaphotos/issues"
+  },
+  "homepage": "https://github.com/otelnov/mariaphotos#readme"
+}
