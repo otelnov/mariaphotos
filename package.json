@@ -26,6 +26,7 @@
     "config": "1.19.0",
     "cron": "1.1.0",
     "rangen": "0.3.0",
+    "request": "2.69.0",
     "twit": "2.2.2"
   },
   "devDependencies": {
