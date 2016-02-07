@@ -1,0 +1,35 @@
+{
+  "extends": "airbnb/base",
+  "rules": {
+    // "quote-props": [1, "consistent-as-needed"],
+    // "no-cond-assign": [2, "except-parens"],
+    "radix": 0,
+    "no-unused-vars": [
+      1,
+      {
+        "vars": "local",
+        "args": "none"
+      }
+    ],
+    "default-case": 0,
+    "no-else-return": 0,
+    "no-param-reassign": 0,
+    "strict": 0,
+    "func-names": 0,
+    "no-console": 0,
+    "comma-dangle": 0,
+    "prefer-const": 0,
+    "no-use-before-define": [
+      2,
+      "nofunc"
+    ],
+    "indent": [
+      2,
+      2,
+      {
+        "SwitchCase": 1
+      }
+    ]
+  },
+  "globals": {}
+}

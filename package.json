@@ -4,8 +4,14 @@
   "description": "twitter photo-bot Maria",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "lint": "node_modules/gulp/bin/gulp.js lint",
+    "dev": "NODE_ENV=development nodemon index.js"
   },
+  "pre-commit": [
+    "lint"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/otelnov/mariaphotos.git"
@@ -15,5 +21,18 @@
   "bugs": {
     "url": "https://github.com/otelnov/mariaphotos/issues"
   },
-  "homepage": "https://github.com/otelnov/mariaphotos#readme"
+  "homepage": "https://github.com/otelnov/mariaphotos#readme",
+  "dependencies": {
+    "config": "1.19.0",
+    "cron": "1.1.0",
+    "rangen": "0.3.0",
+    "twit": "2.2.2"
+  },
+  "devDependencies": {
+    "eslint-config-airbnb": "5.0.0",
+    "gulp": "3.9.0",
+    "gulp-eslint": "1.1.1",
+    "gulp-ssh": "0.5.3",
+    "pre-commit": "1.1.2"
+  }
 }
