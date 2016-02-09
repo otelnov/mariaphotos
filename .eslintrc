@@ -11,6 +11,7 @@
         "args": "none"
       }
     ],
+    "no-new": 0,
     "default-case": 0,
     "no-else-return": 0,
     "no-param-reassign": 0,

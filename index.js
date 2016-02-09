@@ -1,10 +1,12 @@
 'use strict';
 
 const config = require('config');
+const async = require('async');
 const CronJob = require('cron').CronJob;
 const Twit = require('twit');
 const rg = require('rangen');
 const request = require('request').defaults({ encoding: null });
+// const Rx = require('rx');
 
 let Bot = new Twit({
   consumer_key: config.TWITTER_CONSUMER_KEY,
@@ -13,101 +15,126 @@ let Bot = new Twit({
   access_token_secret: config.TWITTER_ACCESS_TOKEN_SECRET
 });
 
-new CronJob('*/30 * * * *', createTweet, null, true, 'America/Los_Angeles');
+new CronJob('0 */21 * * * *', createFreshTweet, null, true, 'America/Los_Angeles');
+// new CronJob('0 */17 * * * *', createPopularTweet, null, true, 'America/Los_Angeles');
 
-function createTweet() {
-  console.log('start creating tweet');
-  generateStatus((err, tweetData) => {
+// function createPopularTweet() {
+//   async.waterfall([
+//     getPopularPhoto,
+//     generateStatus,
+//     createBuffer,
+//     uploadMedia,
+//     postTweet
+//   ], (err, result) => {
+//     if (err) {
+//       return console.error('popular image tweet error', err);
+//     }
+//     console.log('popular image tweet posted on: ', new Date());
+//   });
+// }
+
+function createFreshTweet() {
+  async.waterfall([
+    getFreshPhoto,
+    generateStatus,
+    createBuffer,
+    uploadMedia,
+    postTweet
+  ], (err, result) => {
     if (err) {
-      return console.error(err);
+      return console.error('fresh image tweet error', err);
     }
-    console.log('tweet data received');
-    request.get(tweetData.url, (error, response, body) => {
-      if (error || response.statusCode != 200) {
-        console.error(error);
-        return console.log('error receiving remote image');
-      }
-      let b64content = new Buffer(body).toString('base64');
-      console.log('base64 ready');
-      Bot.post('media/upload', { media_data: b64content }, (err, data, response) => {
-        if (err) {
-          return console.error(err);
-        }
-        console.log('base64 uploaded');
-        let mediaIdStr = data.media_id_string;
-        let params = {
-          status: tweetData.status,
-          media_ids: [mediaIdStr]
-        };
-        Bot.post('statuses/update', params, (err, data, response) => {
-          if (err) {
-            return console.error(err);
-          }
-          console.log('tweet created.');
-        });
-      });
-    });
+    console.log('fresh image tweet posted on: ', new Date());
   });
 }
 
-function getFreshImage(cb) {
-  let params = {
+function getFreshPhoto(cb) {
+  let options = {};
+  rg.image({
     image_size: 4,
-    rpp: 1,
     feature: 'fresh_today',
     tags: 1
-  };
-  rg.image(params, (err, image) => {
-    cb(err, {
-      url: image[0].image_url,
-      name: image[0].name,
-      description: image[0].description,
-      camera: image[0].camera,
-      tags: image[0].tags
-    });
+  }, (err, images) => {
+    if (err) {
+      return cb(err);
+    }
+    let imgs = images
+      .filter(i => i.tags.length > 2)
+      .filter(i => i.description && i.name)
+      .filter(i => i.description.length > 10 && i.description.length < 90)
+      .filter(i => i.name.length > 4 && i.name.length < 90)
+      .filter(i => i.description.toLowerCase() !== 'untitled')
+      .filter(i => i.name.toLowerCase() !== 'untitled')
+      .filter(i => i.description.search(/.jpg/i) === -1)
+      .filter(i => i.name.search(/.jpg/i) === -1)
+      .filter(i => i.description.search(/http:/i) === -1)
+      .filter(i => i.description.search(/https:/i) === -1);
+
+    if (!imgs.length) {
+      return setTimeout(() => {
+        console.log('fresh foto: trying more...');
+        getFreshPhoto(cb);
+      }, 5000);
+    }
+    options.image = imgs[0];
+    cb(null, options);
   });
 }
 
-function generateStatus(cb) {
-  getFreshImage((err, data) => {
+function generateStatus(options, cb) {
+  let status = options.image.description;
+
+  options.image.tags.forEach(t => {
+    if ((status.length + t.length < 115) && (t.search(/&amp/i) === -1)) {
+      status += ` #${t}`;
+    }
+  });
+
+  if (status.length < 117 && options.image.camera) {
+    if (status.length + options.image.camera < 115) {
+      status += ` #${options.image.camera}`;
+    }
+  }
+
+  options.status = status;
+  cb(null, options);
+}
+
+function createBuffer(options, cb) {
+  request.get(options.image.image_url, (error, response, body) => {
+    if (error || response.statusCode !== 200) {
+      return cb('createBuffer: error receiving remote image');
+    }
+    options.b64content = new Buffer(body).toString('base64');
+    cb(null, options);
+  });
+}
+
+function uploadMedia(options, cb) {
+  Bot.post('media/upload', { media_data: options.b64content }, (err, data, response) => {
     if (err) {
-      console.log('error get fresh img');
-      return console.error(err);
+      return cb(err);
     }
-    let status = '#photo';
+    options.mediaIdStr = data.media_id_string;
+    cb(null, options);
+  });
+}
 
-    let hashes = '';
-    if (data.tags.length) {
-      hashes = data.tags.map(h => '#' + h).join(' ');
-    } else {
-      hashes = data.name.replace(/"/g, '').split(' ').map(h => {
-        if (h.length < 3) {
-          return;
-        }
-        if (h == 'Untitled' || h == 'untitled') {
-          return;
-        }
-        return '#' + h;
-      }).join(' ');
+function postTweet(options, cb) {
+  let status = options.status;
+  console.log('status.length: ', status.length);
+  if (status.length > 116) {
+    status = status.substring(0, 116);
+  }
+  console.log('status.length: ', status.length);
+  let params = {
+    status,
+    media_ids: [options.mediaIdStr]
+  };
+  Bot.post('statuses/update', params, (err, data, response) => {
+    if (err) {
+      return cb(err);
     }
-
-    if (data.description) {
-      status = data.description + ' ' + hashes;
-    } else {
-      status = data.name + ' ' + hashes;
-    }
-
-    if (data.camera) {
-      status += ' #' + data.camera;
-    }
-
-    if (status.length > 140) {
-      status = status.substring(0, 140 - 23);
-    }
-
-    cb(null, {
-      url: data.url,
-      status
-    });
+    cb(null);
   });
 }

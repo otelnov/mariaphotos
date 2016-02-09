@@ -23,10 +23,12 @@
   },
   "homepage": "https://github.com/otelnov/mariaphotos#readme",
   "dependencies": {
+    "async": "1.5.2",
     "config": "1.19.0",
     "cron": "1.1.0",
     "rangen": "0.3.0",
     "request": "2.69.0",
+    "rx": "4.0.7",
     "twit": "2.2.2"
   },
   "devDependencies": {
