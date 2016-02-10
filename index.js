@@ -18,20 +18,20 @@ let Bot = new Twit({
 new CronJob('0 */25 * * * *', createFreshTweet, null, true, 'America/Los_Angeles');
 // new CronJob('0 */25 * * * *', createPopularTweet, null, true, 'America/Los_Angeles');
 
-function createPopularTweet() {
-  async.waterfall([
-    getPopularPhoto,
-    //     generateStatus,
-    //     createBuffer,
-    //     uploadMedia,
-    //     postTweet
-  ], (err, result) => {
-    if (err) {
-      return console.error('popular image tweet error', err);
-    }
-    console.log('popular image tweet posted on: ', new Date());
-  });
-}
+// function createPopularTweet() {
+//   async.waterfall([
+//     getPopularPhoto,
+//     //     generateStatus,
+//     //     createBuffer,
+//     //     uploadMedia,
+//     //     postTweet
+//   ], (err, result) => {
+//     if (err) {
+//       return console.error('popular image tweet error', err);
+//     }
+//     console.log('popular image tweet posted on: ', new Date());
+//   });
+// }
 
 function createFreshTweet() {
   async.waterfall([
@@ -71,39 +71,39 @@ function getFreshPhoto(cb) {
   });
 }
 
-let popular = [];
-function getPopularPhoto(cb) {
-  let options = {};
+// let popular = [];
+// function getPopularPhoto(cb) {
+//   let options = {};
 
-  if (popular.length) {
-    options.image = popular[0];
-    popular.splice(0, 1);
-    return cb(null, options);
-  }
+//   if (popular.length) {
+//     options.image = popular[0];
+//     popular.splice(0, 1);
+//     return cb(null, options);
+//   }
 
-  rg.image({
-    image_size: 4,
-    feature: 'popular',
-    tags: 1,
-    rpp: 40
-  }, (err, images) => {
-    if (err) {
-      return cb(err);
-    }
-    let imgs = filter(images);
+//   rg.image({
+//     image_size: 4,
+//     feature: 'popular',
+//     tags: 1,
+//     rpp: 40
+//   }, (err, images) => {
+//     if (err) {
+//       return cb(err);
+//     }
+//     let imgs = filter(images);
 
-    if (!imgs.length) {
-      return setTimeout(() => {
-        console.log('popular foto: trying more...');
-        getPopularPhoto(cb);
-      }, 5000);
-    }
-    options.image = imgs[0];
-    imgs.splice(0, 1);
-    Array.prototype.push.apply(popular, imgs);
-    cb(null, options);
-  });
-}
+//     if (!imgs.length) {
+//       return setTimeout(() => {
+//         console.log('popular foto: trying more...');
+//         getPopularPhoto(cb);
+//       }, 5000);
+//     }
+//     options.image = imgs[0];
+//     imgs.splice(0, 1);
+//     Array.prototype.push.apply(popular, imgs);
+//     cb(null, options);
+//   });
+// }
 
 function generateStatus(options, cb) {
   let status = options.image.description;
