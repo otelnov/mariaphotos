@@ -15,23 +15,23 @@ let Bot = new Twit({
   access_token_secret: config.TWITTER_ACCESS_TOKEN_SECRET
 });
 
-new CronJob('0 */21 * * * *', createFreshTweet, null, true, 'America/Los_Angeles');
-// new CronJob('0 */17 * * * *', createPopularTweet, null, true, 'America/Los_Angeles');
+new CronJob('0 */25 * * * *', createFreshTweet, null, true, 'America/Los_Angeles');
+// new CronJob('0 */25 * * * *', createPopularTweet, null, true, 'America/Los_Angeles');
 
-// function createPopularTweet() {
-//   async.waterfall([
-//     getPopularPhoto,
-//     generateStatus,
-//     createBuffer,
-//     uploadMedia,
-//     postTweet
-//   ], (err, result) => {
-//     if (err) {
-//       return console.error('popular image tweet error', err);
-//     }
-//     console.log('popular image tweet posted on: ', new Date());
-//   });
-// }
+function createPopularTweet() {
+  async.waterfall([
+    getPopularPhoto,
+    //     generateStatus,
+    //     createBuffer,
+    //     uploadMedia,
+    //     postTweet
+  ], (err, result) => {
+    if (err) {
+      return console.error('popular image tweet error', err);
+    }
+    console.log('popular image tweet posted on: ', new Date());
+  });
+}
 
 function createFreshTweet() {
   async.waterfall([
@@ -58,17 +58,7 @@ function getFreshPhoto(cb) {
     if (err) {
       return cb(err);
     }
-    let imgs = images
-      .filter(i => i.tags.length > 2)
-      .filter(i => i.description && i.name)
-      .filter(i => i.description.length > 10 && i.description.length < 90)
-      .filter(i => i.name.length > 4 && i.name.length < 90)
-      .filter(i => i.description.toLowerCase() !== 'untitled')
-      .filter(i => i.name.toLowerCase() !== 'untitled')
-      .filter(i => i.description.search(/.jpg/i) === -1)
-      .filter(i => i.name.search(/.jpg/i) === -1)
-      .filter(i => i.description.search(/http:/i) === -1)
-      .filter(i => i.description.search(/https:/i) === -1);
+    let imgs = filter(images);
 
     if (!imgs.length) {
       return setTimeout(() => {
@@ -77,6 +67,40 @@ function getFreshPhoto(cb) {
       }, 5000);
     }
     options.image = imgs[0];
+    cb(null, options);
+  });
+}
+
+let popular = [];
+function getPopularPhoto(cb) {
+  let options = {};
+
+  if (popular.length) {
+    options.image = popular[0];
+    popular.splice(0, 1);
+    return cb(null, options);
+  }
+
+  rg.image({
+    image_size: 4,
+    feature: 'popular',
+    tags: 1,
+    rpp: 40
+  }, (err, images) => {
+    if (err) {
+      return cb(err);
+    }
+    let imgs = filter(images);
+
+    if (!imgs.length) {
+      return setTimeout(() => {
+        console.log('popular foto: trying more...');
+        getPopularPhoto(cb);
+      }, 5000);
+    }
+    options.image = imgs[0];
+    imgs.splice(0, 1);
+    Array.prototype.push.apply(popular, imgs);
     cb(null, options);
   });
 }
@@ -137,4 +161,20 @@ function postTweet(options, cb) {
     }
     cb(null);
   });
+}
+
+function filter(array) {
+  return array
+    .filter(i => i.tags.length > 2)
+    .filter(i => i.description && i.name)
+    .filter(i => i.description.length > 10 && i.description.length < 90)
+    .filter(i => i.name.length > 4 && i.name.length < 90)
+    .filter(i => i.description.toLowerCase() !== 'untitled')
+    .filter(i => i.name.toLowerCase() !== 'untitled')
+    .filter(i => i.description.search(/.jpg/i) === -1)
+    .filter(i => i.name.search(/.jpg/i) === -1)
+    .filter(i => i.description.search(/http:/i) === -1)
+    .filter(i => i.description.search(/https:/i) === -1)
+    .filter(i => i.name.search(/russia/i) === -1)
+    .filter(i => i.description.search(/russia/i) === -1);
 }
