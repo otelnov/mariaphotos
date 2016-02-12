@@ -15,100 +15,98 @@ let Bot = new Twit({
   access_token_secret: config.TWITTER_ACCESS_TOKEN_SECRET
 });
 
-new CronJob('0 */25 * * * *', createFreshTweet, null, true, 'America/Los_Angeles');
-// new CronJob('0 */25 * * * *', createPopularTweet, null, true, 'America/Los_Angeles');
+new CronJob('0 */55 * * * *', createTweet, null, true, 'America/Los_Angeles');
 
-// function createPopularTweet() {
-//   async.waterfall([
-//     getPopularPhoto,
-//     //     generateStatus,
-//     //     createBuffer,
-//     //     uploadMedia,
-//     //     postTweet
-//   ], (err, result) => {
-//     if (err) {
-//       return console.error('popular image tweet error', err);
-//     }
-//     console.log('popular image tweet posted on: ', new Date());
-//   });
-// }
+let photos = [];
 
-function createFreshTweet() {
+function createTweet() {
   async.waterfall([
-    getFreshPhoto,
+    getPhoto,
     generateStatus,
     createBuffer,
     uploadMedia,
     postTweet
   ], (err, result) => {
     if (err) {
-      return console.error('fresh image tweet error', err);
+      return console.error('tweet posting error', err);
     }
-    console.log('fresh image tweet posted on: ', new Date());
+    console.log('tweet posted on: ', new Date());
   });
 }
 
-function getFreshPhoto(cb) {
+function getPhoto(cb) {
   let options = {};
-  rg.image({
-    image_size: 4,
-    feature: 'fresh_today',
-    tags: 1
-  }, (err, images) => {
-    if (err) {
-      return cb(err);
+  if (photos.length) {
+    options.image = photos[0];
+    photos.splice(0, 1);
+    if (!photos.length) {
+      findPhotos();
     }
-    let imgs = filter(images);
-
-    if (!imgs.length) {
-      return setTimeout(() => {
-        console.log('fresh foto: trying more...');
-        getFreshPhoto(cb);
-      }, 5000);
-    }
-    options.image = imgs[0];
-    cb(null, options);
-  });
+    return cb(null, options);
+  }
+  findPhotos();
+  cb('no photos');
 }
 
-// let popular = [];
-// function getPopularPhoto(cb) {
-//   let options = {};
+function findPhotos() {
+  async.parallel([
+    pxPopular,
+    pxFresh,
+  ], err => {
+    if (err) {
+      return console.error('find photos error', err);
+    }
+    photos = shuffle(photos);
+    console.log(photos.length, 'received');
+    if (photos.length < 26) {
+      getMorePhotos();
+    }
+  });
 
-//   if (popular.length) {
-//     options.image = popular[0];
-//     popular.splice(0, 1);
-//     return cb(null, options);
-//   }
+  function pxPopular(cb) {
+    rg.image({
+      image_size: 4,
+      feature: 'popular',
+      tags: 1,
+      rpp: 100
+    }, (err, images) => {
+      if (err) {
+        return cb(err);
+      }
+      let imgs = filter(images);
 
-//   rg.image({
-//     image_size: 4,
-//     feature: 'popular',
-//     tags: 1,
-//     rpp: 40
-//   }, (err, images) => {
-//     if (err) {
-//       return cb(err);
-//     }
-//     let imgs = filter(images);
+      Array.prototype.push.apply(photos, imgs);
+      cb(null);
+    });
+  }
 
-//     if (!imgs.length) {
-//       return setTimeout(() => {
-//         console.log('popular foto: trying more...');
-//         getPopularPhoto(cb);
-//       }, 5000);
-//     }
-//     options.image = imgs[0];
-//     imgs.splice(0, 1);
-//     Array.prototype.push.apply(popular, imgs);
-//     cb(null, options);
-//   });
-// }
+  function pxFresh(cb) {
+    rg.image({
+      image_size: 4,
+      feature: 'fresh_today',
+      tags: 1,
+      rpp: 100
+    }, (err, images) => {
+      if (err) {
+        return cb(err);
+      }
+      let imgs = filter(images);
+
+      Array.prototype.push.apply(photos, imgs);
+      cb(null);
+    });
+  }
+
+  function getMorePhotos() {
+    console.log('get more photos');
+  }
+}
 
 function generateStatus(options, cb) {
   let status = options.image.description;
 
-  options.image.tags.forEach(t => {
+  let tags = filterTags(options.image.tags);
+  tags.forEach(t => {
     if ((status.length + t.length < 115) && (t.search(/&amp/i) === -1)) {
       status += ` #${t}`;
     }
@@ -146,11 +144,9 @@ function uploadMedia(options, cb) {
 
 function postTweet(options, cb) {
   let status = options.status;
-  console.log('status.length: ', status.length);
   if (status.length > 116) {
     status = status.substring(0, 116);
   }
-  console.log('status.length: ', status.length);
   let params = {
     status,
     media_ids: [options.mediaIdStr]
@@ -163,8 +159,8 @@ function postTweet(options, cb) {
   });
 }
 
-function filter(array) {
-  return array
+function filter(images) {
+  return images
     .filter(i => i.tags.length > 2)
     .filter(i => i.description && i.name)
     .filter(i => i.description.length > 10 && i.description.length < 90)
@@ -177,4 +173,16 @@ function filter(array) {
     .filter(i => i.description.search(/https:/i) === -1)
     .filter(i => i.name.search(/russia/i) === -1)
     .filter(i => i.description.search(/russia/i) === -1);
+}
+
+function filterTags(tags) {
+  return tags
+    .filter(i => i.length > 1)
+    .filter(i => i.search(/russia/i) === -1)
+    .filter(i => i.search(/moscow/i) === -1);
+}
+
+function shuffle(o) {
+  for (var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x); //eslint-disable-line
+  return o;
 }
